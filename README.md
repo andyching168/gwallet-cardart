@@ -34,7 +34,7 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 
 ## 安裝
 
-1. 從 [Releases](../../releases) 下載 `gwallet-cardart-*.zip`，或自行執行 `./build.sh` 打包。
+1. 從 [Releases](../../releases) 下載 `gwallet-cardart-v*.zip`，或自行執行 `./build.sh` 打包（App：`app/build.sh`，不需要 Gradle）。
 2. 在 KernelSU / Magisk 管理器安裝後重新開機。
 3. 先打開一次 Google 錢包並瀏覽你的卡片，讓卡面先下載到快取。
 
@@ -51,6 +51,24 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 模組列表的 **Action** 按鈕會立刻套用一次並關閉 Wallet。
 
 狀態存在 `/data/adb/wallet_cardart/`（模組更新時保留），紀錄檔在 `log.txt`。**解除安裝模組時會自動還原所有原始卡面。**
+
+## 臨時 root 使用者：單次版 App
+
+如果你用的是**不解鎖 Bootloader 的臨時 root**（例如利用核心漏洞取得 root，重開機後就消失），可以改用 `gwallet-cardart-app-*.apk`：
+
+- 不需要安裝模組，也沒有背景監看。在有 root 的時候**寫入一次**就好。
+- 介面和 WebUI 相同，另外多一個「全部重新套用」按鈕。
+- 取得 root 後，先在 root 管理器裡允許「Wallet 卡面」使用 su，再打開 App 選圖並套用。
+
+**為什麼寫一次就夠？** Glide 的快取 key 只有網址的 sha256，沒有時間戳或簽章，所以重開機後快取檔還在，Wallet 也會繼續讀它（已實測）。即使之後完全沒有 root，自訂卡面也會一直保留，直到發生下列情況：
+
+| 情況 | 是否變回原圖 |
+|---|---|
+| 重開機、Wallet 更新 | 否 |
+| 手動清除 Wallet 快取或資料、系統在儲存空間不足時清理快取 | 是 |
+| 發卡機構更換卡面網址、移除後重新加入卡片 | 是 |
+
+變回原圖後，再取得一次 root，打開 App 按「全部重新套用」即可。
 
 ## 限制與已知事項
 
@@ -78,6 +96,8 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 The custom art also shows on the tap-to-pay screen.
 
 **Usage:** Install the zip, reboot, open Wallet once so the art gets cached, then use the module's WebUI to pick an image for each card, toggle it, or restore the original. Uninstalling restores all originals.
+
+**Temporary root?** Use the one-shot app (`gwallet-cardart-app-*.apk`). Grant it su while you have root, then apply once. The cache survives reboots, so the art stays even after root is gone, until the cache is cleared or the card art URL changes.
 
 **Limitations:** Card names can't be changed this way. GMS re-syncs them from the server right away, and pass contents are encrypted. Tested on one Xiaomi device running KernelSU.
 

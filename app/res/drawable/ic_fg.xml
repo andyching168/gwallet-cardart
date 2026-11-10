@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a card with a swap arrow, inside the 66dp safe zone -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M33,38h42a5,5 0,0 1,5,5v26a5,5 0,0 1,-5,5h-42a5,5 0,0 1,-5,-5v-26a5,5 0,0 1,5,-5z" />
+    <path android:fillColor="#FFB300" android:pathData="M28,45h52v7h-52z" />
+    <path android:fillColor="#3561E0"
+        android:pathData="M58,58h12l-3,-3l2,-2l6.5,6.5l-6.5,6.5l-2,-2l3,-3h-12z" />
+    <path android:fillColor="#3561E0" android:pathData="M35,60h14v4h-14z" />
+</vector>

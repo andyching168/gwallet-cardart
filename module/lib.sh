@@ -9,7 +9,8 @@ LOG=$ST/log.txt
 PIDF=$ST/watcher.pid
 BB=/data/adb/ksu/bin/busybox
 [ -x $BB ] || BB=/data/adb/magisk/busybox
-[ -x $BB ] || BB=busybox
+# no busybox (e.g. temporary root): use the system toybox applets directly
+[ -x $BB ] || { command -v busybox >/dev/null 2>&1 && BB=busybox || BB=; }
 mkdir -p $CARDS
 
 log() {

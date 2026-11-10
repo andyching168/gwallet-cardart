@@ -12,7 +12,9 @@ d=$CARDS/$k
 case "$cmd" in
 status)
   r=false; [ -f "$PIDF" ] && kill -0 "$(cat "$PIDF")" 2>/dev/null && r=true
-  echo "{\"watcher\":$r}" ;;
+  echo "{\"watcher\":$r,\"root\":$([ "$(id -u)" = 0 ] && echo true || echo false)}" ;;
+reapply)    # one-shot: re-apply every enabled card (used by the app, where no watcher runs)
+  scan_all; echo ok ;;
 list)
   KN=$(known_keys)
   DUPS=$(for x in $CARDS/*; do [ -f $x/dups ] && sed "s|\$| ${x##*/}|" $x/dups; done)
