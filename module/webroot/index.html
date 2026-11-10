@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wallet 卡面替換</title>
+<style>
+:root{
+  --bg:#f4f5f8; --surface:#fff; --surface2:#eceef3; --text:#1b1c20; --muted:#666a75;
+  --accent:#3561e0; --accent-on:#fff; --danger:#c8372d; --ok:#1f8a4c; --line:#d9dce3;
+  --radius:16px;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#111216; --surface:#1c1d22; --surface2:#26282e; --text:#e6e7eb; --muted:#9a9eaa;
+    --accent:#8aa8ff; --accent-on:#0d1a3d; --danger:#ff8a80; --ok:#6fd49a; --line:#33363e; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:15px/1.45 system-ui,-apple-system,"Noto Sans TC","Noto Sans CJK TC",sans-serif;-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:5;background:var(--bg);
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 10px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0 0 6px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.status{font-size:13px;color:var(--muted)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px;background:var(--muted)}
+.dot.on{background:var(--ok)} .dot.off{background:var(--danger)}
+button{font:inherit;border:0;border-radius:999px;padding:8px 14px;background:var(--surface2);color:var(--text);cursor:pointer;white-space:nowrap;flex:none}
+button.primary{background:var(--accent);color:var(--accent-on)}
+button.danger{color:var(--danger)}
+button:disabled{opacity:.45}
+label.chk{display:flex;gap:6px;align-items:center;font-size:14px;color:var(--muted)}
+main{padding:12px 16px calc(env(safe-area-inset-bottom,0px) + 40px);display:grid;gap:12px}
+.card{background:var(--surface);border-radius:var(--radius);padding:12px;display:grid;gap:10px}
+.arts{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.art{aspect-ratio:1.585;border-radius:10px;background:var(--surface2) center/contain no-repeat;
+  display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted);overflow:hidden}
+.art img{width:100%;height:100%;object-fit:contain}
+.arrow{color:var(--muted)}
+.meta{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.name{flex:1;min-width:0;background:transparent;border:0;border-bottom:1px dashed var(--line);color:var(--text);font:inherit;font-weight:600;padding:2px 0}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--surface2);color:var(--muted);white-space:nowrap}
+.chip.on{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.sub{font-size:12px;color:var(--muted);font-family:ui-monospace,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.empty{color:var(--muted);text-align:center;padding:40px 0}
+/* switch */
+.sw{position:relative;width:46px;height:28px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;border-radius:999px;background:var(--line);transition:.2s}
+.sw span::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.sw input:checked+span{background:var(--accent)}
+.sw input:checked+span::after{transform:translateX(18px)}
+/* editor */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:20;align-items:flex-end;justify-content:center}
+.modal.open{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;
+  padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:grid;gap:12px;max-height:92vh;overflow:auto}
+.sheet h2{margin:0;font-size:17px}
+#stage{width:100%;border-radius:12px;background:repeating-conic-gradient(var(--surface2) 0 25%,var(--surface) 0 50%) 0 0/16px 16px;touch-action:none;display:block}
+input[type=range]{width:100%}
+input[type=text]{width:100%;font:inherit;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface2);color:var(--text)}
+.hint{font-size:12px;color:var(--muted)}
+#toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 24px);transform:translateX(-50%);
+  background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
+details{font-size:12px;color:var(--muted)} pre{white-space:pre-wrap;word-break:break-all;margin:6px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Wallet 卡面替換</h1>
+  <div class="row" style="justify-content:space-between">
+    <span class="status" id="status"><span class="dot"></span>檢查中…</span>
+    <div class="row">
+      <button id="btnReload">重新整理</button>
+      <button class="primary" id="btnRestart">重啟 Wallet</button>
+    </div>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <label class="chk"><input type="checkbox" id="showAll">顯示所有快取圖片（含非卡片）</label>
+  </div>
+</header>
+<main id="list"><div class="empty">載入中…</div></main>
+
+<div class="modal" id="editor">
+  <div class="sheet">
+    <h2 id="edTitle">選擇卡面</h2>
+    <canvas id="stage"></canvas>
+    <div class="hint">拖曳調整位置，滑桿縮放。輸出尺寸 <span id="edSize"></span></div>
+    <input type="range" id="zoom" min="0.2" max="4" step="0.01" value="1">
+    <div class="row">
+      <button id="btnCover">填滿</button>
+      <button id="btnContain">完整顯示</button>
+      <label class="chk"><input type="checkbox" id="useMask" checked>沿用原卡圓角/透明區</label>
+    </div>
+    <div class="row">
+      <button id="btnPick">從手機選圖片</button>
+      <input type="file" id="file" accept="image/*" hidden>
+    </div>
+    <div class="row" style="flex-wrap:nowrap">
+      <input type="text" id="path" placeholder="或輸入路徑，如 /sdcard/Pictures/card.png">
+      <button id="btnPath">載入</button>
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button id="btnCancel">取消</button>
+      <button class="primary" id="btnSave" disabled>套用</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const MOD='/data/adb/modules/wallet_cardart';
+const CTL=`sh ${MOD}/ctl.sh`;
+const $=s=>document.querySelector(s);
+
+function exec(cmd){
+  return new Promise(res=>{
+    if(typeof ksu==='undefined'){res({errno:1,stdout:'',stderr:'not in KernelSU WebUI'});return;}
+    const cb='cb_'+Date.now()+'_'+Math.random().toString(36).slice(2);
+    window[cb]=(errno,stdout,stderr)=>{delete window[cb];res({errno,stdout,stderr});};
+    try{ksu.exec(cmd,'{}',cb);}catch(e){delete window[cb];res({errno:1,stdout:'',stderr:String(e)});}
+  });
+}
+const ctl=(...a)=>exec([CTL,...a.map(x=>`'${String(x).replace(/'/g,"'\\''")}'`)].join(' '));
+let toastT;
+function toast(m,ms=2600){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',ms);}
+
+const SRC={ipasscard:'iPASS 一卡通',easycard:'悠遊卡',pay:'支付卡 / 票證',mse:'MSE'};
+let items=[], thumbs={}, dims={};
+
+function loadImg(src){return new Promise((ok,bad)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=bad;i.src=src;});}
+async function thumb(key,kind){
+  const id=kind+key; if(thumbs[id]!==undefined) return thumbs[id];
+  const r=await ctl(kind==='o'?'b64orig':'b64custom',key);
+  const url=r.errno===0&&r.stdout.trim()?'data:image/png;base64,'+r.stdout.trim():null;
+  thumbs[id]=url;
+  if(url&&kind==='o'){try{const i=await loadImg(url);dims[key]=[i.naturalWidth,i.naturalHeight];}catch{thumbs[id]=null;}}
+  return url;
+}
+const isCardShape=k=>{const d=dims[k];if(!d)return false;const r=d[0]/d[1];return r>1.45&&r<1.7&&d[0]>=200;};
+
+async function refresh(){
+  const st=await ctl('status');
+  try{const s=JSON.parse(st.stdout);$('#status').innerHTML=`<span class="dot ${s.watcher?'on':'off'}"></span>監看程式${s.watcher?'執行中':'未執行'}`;}
+  catch{$('#status').innerHTML=`<span class="dot off"></span>${st.stderr||'無法連線到 KernelSU'}`;}
+  const r=await ctl('list');
+  try{items=JSON.parse(r.stdout);}catch{ $('#list').innerHTML=`<div class="empty">讀取失敗<br>${r.stderr||r.stdout}</div>`;return;}
+  // fetch originals (4 at a time) so we can tell which images are card-shaped
+  const q=items.filter(i=>!i.dupOf).map(i=>i.key);
+  await Promise.all(Array.from({length:4},async()=>{while(q.length){await thumb(q.shift(),'o');}}));
+  render();
+}
+
+function render(){
+  const all=$('#showAll').checked;
+  const list=items.filter(i=>!i.dupOf&&(all||i.src||i.custom||isCardShape(i.key)))
+    .sort((a,b)=>(b.custom-a.custom)||(!!b.src-!!a.src)||(b.mtime-a.mtime));
+  const el=$('#list'); el.innerHTML='';
+  if(!list.length){el.innerHTML='<div class="empty">沒有找到卡面快取。先打開 Wallet 瀏覽一下卡片再重新整理。</div>';return;}
+  for(const it of list){
+    const c=document.createElement('div'); c.className='card';
+    const name=it.label||SRC[it.src]||(it.src?it.src:'未知卡片');
+    const dupN=items.filter(x=>x.dupOf===it.key).length;
+    c.innerHTML=`
+      <div class="arts">
+        <div class="art o">${thumbs['o'+it.key]?`<img src="${thumbs['o'+it.key]}">`:'無原圖'}</div>
+        <div class="arrow">→</div>
+        <div class="art c">${it.custom?'…':'未設定'}</div>
+      </div>
+      <div class="meta">
+        <input class="name" value="${name.replace(/"/g,'&quot;')}" placeholder="卡片名稱">
+        <span class="chip ${it.enabled?'on':''}">${it.enabled?'已套用':'原始'}</span>
+        <label class="sw"><input type="checkbox" ${it.enabled?'checked':''} ${it.custom?'':'disabled'}><span></span></label>
+      </div>
+      <div class="sub">${it.src?(SRC[it.src]||it.src)+' · ':''}${dims[it.key]?dims[it.key].join('×')+' · ':''}${it.key.slice(0,16)}…${dupN?` · 另有 ${dupN} 份副本同步替換`:''}${it.cached?'':' · 快取已不存在'}</div>
+      <div class="actions">
+        <button class="primary pick">${it.custom?'更換圖片':'選擇圖片'}</button>
+        ${it.custom?'<button class="danger forget">刪除自訂</button>':''}
+      </div>`;
+    if(it.custom) thumb(it.key,'c').then(u=>{c.querySelector('.art.c').innerHTML=u?`<img src="${u}">`:'讀取失敗';});
+    c.querySelector('.name').addEventListener('change',async e=>{await ctl('label',it.key,e.target.value);it.label=e.target.value;toast('已儲存名稱');});
+    c.querySelector('.sw input').addEventListener('change',async e=>{
+      const r=await ctl(e.target.checked?'enable':'restore',it.key);
+      if(r.errno){toast('失敗：'+(r.stderr||r.stdout));e.target.checked=!e.target.checked;return;}
+      it.enabled=e.target.checked; toast(it.enabled?'已套用，重啟 Wallet 後生效':'已還原原始卡面，重啟 Wallet 後生效',3500); render();
+    });
+    c.querySelector('.pick').addEventListener('click',()=>openEditor(it));
+    const f=c.querySelector('.forget');
+    if(f) f.addEventListener('click',async()=>{
+      if(!confirm('還原原始卡面並刪除這張卡的自訂圖片？'))return;
+      await ctl('forget',it.key); delete thumbs['c'+it.key]; toast('已還原並刪除自訂'); refresh();
+    });
+    el.appendChild(c);
+  }
+}
+
+/* ---------- editor ---------- */
+const ed={it:null,img:null,mask:null,W:0,H:0,s:1,x:0,y:0};
+const cv=$('#stage'), cx=cv.getContext('2d');
+async function openEditor(it){
+  ed.it=it; ed.img=null; $('#btnSave').disabled=true; $('#path').value='';
+  const [w,h]=dims[it.key]||[512,323];
+  const scale=Math.min(2,1200/w);
+  ed.W=Math.round(w*scale); ed.H=Math.round(h*scale);
+  cv.width=ed.W; cv.height=ed.H; $('#edSize').textContent=`${ed.W}×${ed.H}`;
+  ed.mask=null;
+  const o=thumbs['o'+it.key];
+  if(o){ const im=await loadImg(o); ed.mask=im;
+    // only offer the mask if the original actually has transparency
+    const t=document.createElement('canvas');t.width=im.naturalWidth;t.height=im.naturalHeight;
+    const tc=t.getContext('2d');tc.drawImage(im,0,0);const a=tc.getImageData(0,0,1,1).data[3];
+    $('#useMask').checked=a<200; $('#useMask').disabled=false;
+  } else { $('#useMask').checked=false; $('#useMask').disabled=true; }
+  $('#edTitle').textContent='卡面：'+(it.label||SRC[it.src]||'未知卡片');
+  draw(); $('#editor').classList.add('open');
+}
+function fit(mode){
+  if(!ed.img)return;
+  const iw=ed.img.naturalWidth, ih=ed.img.naturalHeight;
+  ed.s=(mode==='cover'?Math.max:Math.min)(ed.W/iw,ed.H/ih);
+  ed.x=(ed.W-iw*ed.s)/2; ed.y=(ed.H-ih*ed.s)/2;
+  $('#zoom').value=1; ed.base=ed.s; draw();
+}
+function draw(){
+  cx.clearRect(0,0,ed.W,ed.H);
+  if(!ed.img){cx.fillStyle='#8888';cx.font=`${ed.H/10}px sans-serif`;cx.textAlign='center';cx.fillText('請選擇圖片',ed.W/2,ed.H/2);return;}
+  cx.globalCompositeOperation='source-over';
+  cx.drawImage(ed.img,ed.x,ed.y,ed.img.naturalWidth*ed.s,ed.img.naturalHeight*ed.s);
+  if($('#useMask').checked&&ed.mask){cx.globalCompositeOperation='destination-in';cx.drawImage(ed.mask,0,0,ed.W,ed.H);cx.globalCompositeOperation='source-over';}
+}
+async function setSource(url){
+  try{ed.img=await loadImg(url);}catch{toast('無法讀取這張圖片');return;}
+  fit('cover'); $('#btnSave').disabled=false;
+}
+$('#zoom').addEventListener('input',e=>{
+  if(!ed.img)return; const ns=ed.base*parseFloat(e.target.value);
+  const cxm=ed.W/2, cym=ed.H/2; // zoom around center
+  ed.x=cxm-(cxm-ed.x)*ns/ed.s; ed.y=cym-(cym-ed.y)*ns/ed.s; ed.s=ns; draw();
+});
+let drag=null;
+cv.addEventListener('pointerdown',e=>{if(!ed.img)return;cv.setPointerCapture(e.pointerId);drag={x:e.clientX,y:e.clientY};});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const k=ed.W/cv.getBoundingClientRect().width;
+  ed.x+=(e.clientX-drag.x)*k; ed.y+=(e.clientY-drag.y)*k; drag={x:e.clientX,y:e.clientY}; draw();});
+cv.addEventListener('pointerup',()=>drag=null); cv.addEventListener('pointercancel',()=>drag=null);
+$('#btnCover').onclick=()=>fit('cover'); $('#btnContain').onclick=()=>fit('contain');
+$('#useMask').onchange=draw;
+$('#btnPick').onclick=()=>$('#file').click();
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>setSource(r.result);r.readAsDataURL(f);e.target.value='';};
+$('#btnPath').onclick=async()=>{
+  const p=$('#path').value.trim(); if(!p)return;
+  const r=await ctl('loadpath',p);
+  if(r.errno||!r.stdout.trim()){toast('讀取失敗：'+(r.stderr||r.stdout||'找不到檔案'));return;}
+  setSource('data:image/png;base64,'+r.stdout.trim());
+};
+$('#btnCancel').onclick=()=>$('#editor').classList.remove('open');
+$('#btnSave').onclick=async()=>{
+  const b=$('#btnSave'); b.disabled=true; b.textContent='寫入中…';
+  try{
+    draw();
+    const data=cv.toDataURL('image/png').split(',')[1];
+    await ctl('upload_reset');
+    const CH=60000; // stay well under the kernel's per-argument limit
+    for(let i=0;i<data.length;i+=CH){
+      const r=await exec(`printf '%s' '${data.slice(i,i+CH)}' >> /data/adb/wallet_cardart/upload.b64`);
+      if(r.errno) throw new Error(r.stderr||'寫入失敗');
+    }
+    const r=await ctl('setimage',ed.it.key);
+    if(r.errno||!r.stdout.includes('ok')) throw new Error(r.stderr||r.stdout);
+    delete thumbs['c'+ed.it.key];
+    $('#editor').classList.remove('open');
+    toast('已套用，按「重啟 Wallet」後生效',3500);
+    await refresh();
+  }catch(e){toast('失敗：'+e.message,4000);}
+  finally{b.disabled=false;b.textContent='套用';}
+};
+
+$('#btnReload').onclick=()=>{thumbs={};dims={};refresh();};
+$('#btnRestart').onclick=async()=>{await ctl('restart');toast('Wallet 已關閉，重新打開即可看到新卡面');};
+$('#showAll').onchange=render;
+refresh();
+</script>
+</body>
+</html>
