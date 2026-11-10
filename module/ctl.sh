@@ -18,7 +18,8 @@ reapply)    # one-shot: re-apply every enabled card (used by the app, where no w
 list)
   KN=$(known_keys)
   DUPS=$(for x in $CARDS/*; do [ -f $x/dups ] && sed "s|\$| ${x##*/}|" $x/dups; done)
-  { ls $CACHE 2>/dev/null | grep '\.0$' | sed 's/\.0$//'; ls $CARDS 2>/dev/null; } | sort -u | {
+  { ls $CACHE 2>/dev/null | grep '\.0$' | sed 's/\.0$//'; ls $CARDS 2>/dev/null
+    echo "$KN" | grep -v ' pay$' | cut -d' ' -f1; } | sort -u | {
     echo '['; first=1
     while read -r k; do
       f=$CACHE/$k.0; d=$CARDS/$k; sz=0; mt=0; c=false
@@ -47,11 +48,11 @@ setimage)   # image was streamed into $ST/upload.b64
   $BB base64 -d $ST/upload.b64 > $d/custom.png && rm -f $ST/upload.b64
   h $d/custom.png > $d/custom.sha
   touch $d/enabled
-  apply_card $k; apply_dups
+  KEYS=$(known_keys); apply_card $k; apply_dups
   echo ok ;;
 enable)
   [ -f $d/custom.png ] || { echo "no image"; exit 1; }
-  touch $d/enabled; apply_card $k; apply_dups; echo ok ;;
+  touch $d/enabled; KEYS=$(known_keys); apply_card $k; apply_dups; echo ok ;;
 restore)
   restore_card $k; echo ok ;;
 forget)

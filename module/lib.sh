@@ -34,13 +34,35 @@ known_keys() {
   done
 }
 
+# Create a cache entry Glide never wrote, e.g. when the card art URL fails to download
+# (seen in the wild: a 403 from lh3.googleusercontent.com/wca/...). Glide checks its disk cache
+# before the network, so a seeded entry is used as-is. Wallet must not be running: Glide only
+# reads the journal on startup and rewrites it from memory later.
+seed_card() {
+  k=$1; d=$CARDS/$k; f=$CACHE/$k.0
+  [ -d "$CACHE" ] && [ -f "$CACHE/journal" ] || return 0
+  am force-stop $PKG
+  cat $d/custom.png > "$f"
+  chown "$(stat -c %u:%g "$CACHE")" "$f"; chmod 600 "$f"
+  chcon "$(ls -dZ "$CACHE" | cut -d' ' -f1)" "$f" 2>/dev/null
+  printf 'CLEAN %s %s\n' "$k" "$(stat -c %s "$f")" >> "$CACHE/journal"
+  touch $d/seeded
+  log "seed $k (no cached original)"
+}
+
 # put custom art into the cache for card $1 (in place: keeps owner/mode/SELinux label)
 apply_card() {
   k=$1; d=$CARDS/$k; f=$CACHE/$k.0
-  [ -f $d/enabled ] && [ -f $d/custom.png ] && [ -f "$f" ] || return 0
+  [ -f $d/enabled ] && [ -f $d/custom.png ] || return 0
+  if [ ! -f "$f" ]; then
+    # only seed art URLs Wallet still refers to (stale keys would just be evicted again)
+    echo "$KEYS" | $BB grep -q "^$k " && seed_card $k
+    return 0
+  fi
   cs=$(cat $d/custom.sha); fh=$(h "$f")
   [ "$fh" = "$cs" ] && return 0
   cp "$f" $d/orig.0; echo "$fh" > $d/orig.sha
+  rm -f $d/seeded   # Glide got the real image after all: it is now a normal backup/restore
   cat $d/custom.png > "$f" && log "apply $k (orig $fh)"
 }
 
@@ -64,6 +86,13 @@ apply_dups() {
 restore_card() {
   k=$1; d=$CARDS/$k
   rm -f $d/enabled
+  if [ -f $d/seeded ]; then   # we created this entry: drop it again
+    am force-stop $PKG
+    rm -f "$CACHE/$k.0"
+    printf 'REMOVE %s\n' "$k" >> "$CACHE/journal"
+    rm -f $d/seeded; log "unseed $k"
+    return 0
+  fi
   [ -f $d/orig.0 ] || return 0
   cs=$(cat $d/custom.sha 2>/dev/null)
   for n in $k $(cat $d/dups 2>/dev/null); do
@@ -74,6 +103,7 @@ restore_card() {
 }
 
 scan_all() {
+  KEYS=$(known_keys)
   for d in $CARDS/*; do [ -d $d ] && apply_card ${d##*/}; done
   apply_dups
 }

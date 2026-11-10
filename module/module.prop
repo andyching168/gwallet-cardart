@@ -1,6 +1,6 @@
 id=wallet_cardart
 name=Google Wallet Card Art Replacer
-version=v2.1
-versionCode=3
+version=v2.2
+versionCode=4
 author=andyching168
 description=Replace Google Wallet card art without hooking (rewrites Glide image cache). Manage cards from the WebUI.

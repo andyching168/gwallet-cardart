@@ -26,6 +26,7 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 2. 第一次套用時備份原圖，再用自訂圖**原地覆寫**快取檔。這樣檔案的擁有者、權限和 SELinux 標籤都不會變。
 3. 背景用 `inotifyd` 監看快取資料夾。Glide 寫入新檔（先寫 `.tmp` 再改名）時，馬上換回自訂圖。
 4. 同一張原圖如果有多份快取（不同網址），會一起替換。
+5. **卡面下載失敗的卡也能換**：有時卡面網址會被 Google 的圖片代理拒絕（實測遇過 `lh3.googleusercontent.com/wca/...` 回傳 403），這時 Wallet 會改顯示內建的預設圖，快取裡也不會有任何檔案。因為 Glide 會先查磁碟快取才上網，模組會直接建立這個網址對應的快取檔，並在 Glide 的 `journal` 加一筆 `CLEAN` 紀錄（建立前會先停止 Wallet），Glide 就會使用這個檔案，不再去下載。還原時則刪除檔案，並加一筆 `REMOVE` 紀錄。
 
 ## 需求
 
@@ -73,7 +74,7 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 ## 限制與已知事項
 
 - **改不了卡片名稱**：支付卡名稱雖然以明文存在 GMS 的 `pay` / `android_pay` 資料庫，但 GMS 一啟動就會從伺服器同步並覆寫。票證（Valuable）的內容則有加密。目前只能換圖。
-- 卡面只有在快取裡才能替換，所以要先在 Wallet 裡看過那張卡。
+- 卡面要在快取裡才能替換，所以要先在 Wallet 裡看過那張卡。例外是 Wallet 卡片紀錄裡有記載網址的卡（例如 iPASS），即使從沒成功下載過，也能直接建立快取。
 - 發卡機構換了卡面網址後，快取檔名會跟著改變。模組會盡量從卡片紀錄找回對應關係，但不保證每種卡都辨識得到。辨識不到時，可以勾選「顯示所有快取圖片」手動挑選。
 - 只在一台小米手機（Android 16、KernelSU）上測試過，卡片類型包括 iPASS 一卡通和支付卡。其他機型和卡片類型歡迎回報。
 - 只支援主要使用者（user 0）。
@@ -91,6 +92,7 @@ Google 錢包用 [Glide](https://github.com/bumptech/glide) 載入卡面，下�
 **How it works:** Google Wallet loads card art with Glide. The disk cache file name is `sha256(card art URL)`, and Wallet never re-downloads while the cache entry exists. The module:
 1. Finds card art URLs in Wallet's card records and GMS's `pay` database.
 2. Backs up the original image, then overwrites the cache file in place, which keeps the owner, mode and SELinux label.
+   If the art never downloaded (e.g. the image proxy returns 403), it creates the cache entry itself: the file plus a `CLEAN` journal line. Glide checks the disk cache before the network, so it uses that entry.
 3. Uses `inotifyd` to re-apply the custom image whenever Glide rewrites the entry.
 
 The custom art also shows on the tap-to-pay screen.

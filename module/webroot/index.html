@@ -172,7 +172,7 @@ function render(){
     const dupN=items.filter(x=>x.dupOf===it.key).length;
     c.innerHTML=`
       <div class="arts">
-        <div class="art o">${thumbs['o'+it.key]?`<img src="${thumbs['o'+it.key]}">`:'無原圖'}</div>
+        <div class="art o">${thumbs['o'+it.key]?`<img src="${thumbs['o'+it.key]}">`:(it.cached?'無原圖':'原圖未快取<br>（可能下載失敗）')}</div>
         <div class="arrow">→</div>
         <div class="art c">${it.custom?'…':'未設定'}</div>
       </div>
@@ -181,7 +181,7 @@ function render(){
         <span class="chip ${it.enabled?'on':''}">${it.enabled?'已套用':'原始'}</span>
         <label class="sw"><input type="checkbox" ${it.enabled?'checked':''} ${it.custom?'':'disabled'}><span></span></label>
       </div>
-      <div class="sub">${it.src?(SRC[it.src]||it.src)+' · ':''}${dims[it.key]?dims[it.key].join('×')+' · ':''}${it.key.slice(0,16)}…${dupN?` · 另有 ${dupN} 份副本同步替換`:''}${it.cached?'':' · 快取已不存在'}</div>
+      <div class="sub">${it.src?(SRC[it.src]||it.src)+' · ':''}${dims[it.key]?dims[it.key].join('×')+' · ':''}${it.key.slice(0,16)}…${dupN?` · 另有 ${dupN} 份副本同步替換`:''}${it.cached?'':(it.enabled?'':' · 尚未快取，套用時會直接建立')}</div>
       <div class="actions">
         <button class="primary pick">${it.custom?'更換圖片':'選擇圖片'}</button>
         ${it.custom?'<button class="danger forget">刪除自訂</button>':''}
